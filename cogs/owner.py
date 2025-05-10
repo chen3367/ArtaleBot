@@ -97,6 +97,27 @@ class Owner(commands.Cog, name="owner"):
         await context.send(embed=embed)
 
     @commands.hybrid_command(
+        name="invite",
+        description="Get invite link"
+    )
+    @commands.is_owner()
+    async def invite(self, context: Context) -> None:
+        """
+        Get the invite link of the bot to be able to invite it.
+
+        :param context: The hybrid command context.
+        """
+        embed = discord.Embed(
+            description=f"Invite me by clicking [here]({self.bot.config['invite_link']}).",
+            color=0xD75BF4,
+        )
+        try:
+            await context.author.send(embed=embed)
+            await context.send("I sent you a private message!")
+        except discord.Forbidden:
+            await context.send(embed=embed)
+
+    @commands.hybrid_command(
         name="load",
         description="Load a cog",
     )
