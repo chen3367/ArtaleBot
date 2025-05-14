@@ -147,7 +147,7 @@ class Maple(commands.Cog, name="maple"):
         mob_level, evasion = mob_info["level"].values[0], mob_info["evasion"].values[0]
         
         header = ['accuracy\\level'] + [l for l in range(level, level+5)]
-        acc_table = [[acc] + [float(round(min(100, acc/((1.84 + 0.07 * max(0, mob_level - l)) * evasion) - 1) * 100, 1)) for l in range(level, level+5)] for acc in range(accuracy, accuracy+10)]
+        acc_table = [[acc] + [min(100, float(round((acc/((1.84 + 0.07 * max(0, mob_level - l)) * evasion) - 1) * 100, 1))) for l in range(level, level+5)] for acc in range(accuracy, accuracy+10)]
 
         output = t2a(
             header = header,
