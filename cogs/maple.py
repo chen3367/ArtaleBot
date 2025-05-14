@@ -6,6 +6,7 @@ from discord.ext import commands
 from discord.ext.commands import Context
 from src.maple import var
 import pandas as pd
+from table2ascii import table2ascii as t2a, PresetStyle
 
 class Mob(discord.ui.View):
     def __init__(self, mob, bot, index = 0) -> None:
@@ -124,6 +125,37 @@ class Maple(commands.Cog, name="maple"):
             embed.add_field(name="掉落物", value=mob_info['drop'].values[0], inline=True)
         if not pd.isna(mob_info['foundAt'].values[0]):
             embed.add_field(name="出沒地點", value=mob_info['foundAt'].values[0], inline=True)
+
+        ID = mob_info['ID'].values[0]
+        embed.set_thumbnail(url=f"https://maplestory.io/api/TWMS/256/mob/{ID}/icon")
+        await context.send(embed=embed)
+    
+    @maple.command(name="chance_to_hit", description="物攻職業命中率計算")
+    @app_commands.autocomplete(name=autocompletion_list(var.mob_list))
+    @app_commands.describe(
+        name="怪物名稱",
+        level="角色等級",
+        accuracy="命中率"
+    )
+    # Chance to Hit = Accuracy/((1.84 + 0.07 * D) * Avoid) - 1
+    # (D = monster level - your level. If negative, make it 0.)
+    async def mob(self, context: Context, name: str, level: int, accuracy: int) -> None:
+        mob_info = var.mob[var.mob['name_tw'] == name]
+        embed = discord.Embed(
+            title=f"**{name}**", description=f"", color=0xBEBEFE
+        )
+        mob_level, evasion = mob_info["level"].values[0], mob_info["evasion"].values[0]
+        
+        header = ['accuracy\\level'] + [l for l in range(level, level+5)]
+        acc_table = [[acc] + [float(round(min(100, acc/((1.84 + 0.07 * max(0, mob_level - l)) * evasion) - 1) * 100, 1)) for l in range(level, level+5)] for acc in range(accuracy, accuracy+10)]
+
+        output = t2a(
+            header = header,
+            body = acc_table,
+            first_col_heading=True
+        )
+
+        embed.add_field(name="命中率", value=f"```\n{output}\n```", inline=True)
 
         ID = mob_info['ID'].values[0]
         embed.set_thumbnail(url=f"https://maplestory.io/api/TWMS/256/mob/{ID}/icon")
