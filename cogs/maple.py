@@ -126,8 +126,8 @@ class Maple(commands.Cog, name="maple"):
         if not pd.isna(mob_info['foundAt'].values[0]):
             embed.add_field(name="出沒地點", value=mob_info['foundAt'].values[0], inline=True)
 
-        ID = mob_info['ID'].values[0]
-        embed.set_thumbnail(url=f"https://maplestory.io/api/TWMS/256/mob/{ID}/icon")
+        ID = int(mob_info['ID'].values[0])
+        embed.set_thumbnail(url=f"https://maplestory.io/api/TWMS/256/mob/{ID}/render/stand")
         await context.send(embed=embed)
     
     @maple.command(name="chance_to_hit", description="物攻職業命中率計算")
@@ -146,8 +146,8 @@ class Maple(commands.Cog, name="maple"):
         )
         mob_level, evasion = mob_info["level"].values[0], mob_info["evasion"].values[0]
         
-        header = ['accuracy\\level'] + [l for l in range(level, level+5)]
-        acc_table = [[acc] + [min(100, float(round((acc/((1.84 + 0.07 * max(0, mob_level - l)) * evasion) - 1) * 100, 1))) for l in range(level, level+5)] for acc in range(accuracy, accuracy+10)]
+        header = ['accuracy\\level'] + [l for l in range(level, level+3)]
+        acc_table = [[acc] + [min(100, float(round((acc/((1.84 + 0.07 * max(0, mob_level - l)) * evasion) - 1) * 100, 1))) for l in range(level, level+3)] for acc in range(accuracy, accuracy+10)]
 
         output = t2a(
             header = header,
@@ -157,8 +157,8 @@ class Maple(commands.Cog, name="maple"):
 
         embed.add_field(name="命中率", value=f"```\n{output}\n```", inline=True)
 
-        ID = mob_info['ID'].values[0]
-        embed.set_thumbnail(url=f"https://maplestory.io/api/TWMS/256/mob/{ID}/icon")
+        ID = int(mob_info['ID'].values[0])
+        embed.set_thumbnail(url=f"https://maplestory.io/api/TWMS/256/mob/{ID}/render/stand")
         await context.send(embed=embed)
 
     @maple.command(name="change_thumbnail_by_attachment", hidden=True)
