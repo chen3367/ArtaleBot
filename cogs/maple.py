@@ -6,7 +6,10 @@ from discord.ext import commands
 from discord.ext.commands import Context
 from src.maple import var
 import pandas as pd
-from table2ascii import table2ascii as t2a, PresetStyle
+from table2ascii import table2ascii as t2a
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
+import requests
 
 class Mob(discord.ui.View):
     def __init__(self, mob, bot, index = 0) -> None:
@@ -159,6 +162,39 @@ class Maple(commands.Cog, name="maple"):
 
         ID = int(mob_info['ID'].values[0])
         embed.set_thumbnail(url=f"https://maplestory.io/api/TWMS/256/mob/{ID}/render/stand")
+        await context.send(embed=embed)
+    
+    @maple.command(name="opq_cd", description="當日CD顏色查詢")
+    async def mob(self, context: Context) -> None:
+
+        # Get current UTC time as a timezone-aware datetime
+        now_utc = datetime.now(timezone.utc)
+
+        weekday = {0: "日", 1: "一", 2: "二", 3: "三", 4: "四", 5: "五", 6: "六", }
+
+        # Convert to UTC+8
+        time_utc8 = now_utc.astimezone(ZoneInfo("Asia/Singapore"))
+        weekday_num_utc8 = (time_utc8.weekday() + 1) % 7
+
+        # Convert to UTC-5
+        time_utc_minus_5 = now_utc.astimezone(ZoneInfo("America/Jamaica"))
+        weekday_num_minus_5 = (time_utc_minus_5.weekday() + 1) % 7
+
+        # Get disk name
+        item_id = 4001056 + weekday_num_minus_5
+        url = f"https://maplestory.io/api/TWMS/256/item/{item_id}/name"
+        item = requests.get(url).json()
+
+        embed = discord.Embed(
+            title=item["name"], 
+            description="", 
+            color=0xBEBEFE
+        )
+
+        embed.add_field(name="台灣時間(UTC+8)", value=f"{time_utc8.strftime('%Y-%m-%d %H:%M:%S')} 星期{weekday[weekday_num_utc8]}", inline=False)
+        embed.add_field(name="系統時間(UTC-5):", value=f"{time_utc_minus_5.strftime('%Y-%m-%d %H:%M:%S')} 星期{weekday[weekday_num_minus_5]}", inline=False)
+
+        embed.set_thumbnail(url=f"https://maplestory.io/api/GMS/62/item/{item_id}/icon")
         await context.send(embed=embed)
 
     @maple.command(name="change_thumbnail_by_attachment", hidden=True)
