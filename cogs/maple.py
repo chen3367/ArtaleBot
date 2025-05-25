@@ -4,12 +4,29 @@ import aiohttp, aiofiles
 from discord import app_commands
 from discord.ext import commands
 from discord.ext.commands import Context
-from src.maple import var
-import pandas as pd
 from table2ascii import table2ascii as t2a
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 import requests
+import json
+
+with open('src/maple/mob.json',encoding="utf-8") as f:
+  mob = json.load(f)
+
+with open('src/maple/drop_data.json',encoding="utf-8") as f:
+  drop_data = json.load(f)
+
+with open('src/maple/boss_time.json',encoding="utf-8") as f:
+  boss_time = json.load(f)
+
+with open('src/maple/map.json',encoding="utf-8") as f:
+  maple_map = json.load(f)
+
+with open('src/maple/boss_time.json',encoding="utf-8") as f:
+  boss_time = json.load(f)
+
+with open('src/maple/item.json',encoding="utf-8") as f:
+  item = json.load(f)
 
 class Mob(discord.ui.View):
     def __init__(self, mob, bot, index = 0) -> None:
@@ -114,55 +131,75 @@ class Maple(commands.Cog, name="maple"):
             await context.send(embed=embed)
     
     @maple.command(name="mob", description="取得怪物資訊")
-    @app_commands.autocomplete(name=autocompletion_list(var.mob_list))
+    @app_commands.autocomplete(name=autocompletion_list(drop_data.keys()))
     @app_commands.describe(
         name="怪物名稱"
     )
     async def mob(self, context: Context, name: str) -> None:
-        mob_info = var.mob[var.mob['name_tw'] == name]
-        embed = discord.Embed(
-            title=f"**{name}**", description="", color=0xBEBEFE
-        )
-        embed.add_field(name="", value=formatted_mob_info(mob_info), inline=True)
-        if not pd.isna(mob_info['drop'].values[0]):
-            embed.add_field(name="掉落物", value=mob_info['drop'].values[0], inline=True)
-        if not pd.isna(mob_info['foundAt'].values[0]):
-            embed.add_field(name="出沒地點", value=mob_info['foundAt'].values[0], inline=True)
+        mob_info = mob[name]
+        map_info = maple_map[name].keys()
+        boss_respawn_time = boss_time.get(name, "")
+        item_list = {v:k for k, v in item.items()}
+        drop_list = sorted(drop_data[name], key = lambda x: item_list[x])
+        embed = discord.Embed(title=f"**{name}** { '(BOSS)' if boss_respawn_time else ''}", description=f"資料來源: [Artale怪物掉落物一覽](https://a2983456456.github.io/artale-drop/)", color=0xBEBEFE)
 
-        ID = int(mob_info['ID'].values[0])
+        embed.add_field(
+            name="",
+            value=(
+                "**怪物資訊**\n"
+                f"等級: {mob_info[0]}\n"
+                f"HP: {mob_info[1]}\n"
+                f"MP: {mob_info[2]}\n"
+                f"經驗值: {mob_info[3]}\n"
+                f"迴避: {mob_info[4]}\n"
+                f"物防: {mob_info[5]}\n"
+                f"魔防: {mob_info[6]}\n"
+                f"命中需求: {mob_info[7]}\n" + (f"重生時間: {boss_respawn_time}\n\n" if boss_respawn_time else "\n")
+            ) 
+            + "**出沒地圖**\n" + "\n".join(map_info)
+        )
+
+        embed.add_field(
+            name="",
+            value="**裝備**\n" + "\n".join(x for x in drop_list if 1000000 <= int(item_list[x]) < 2000000)
+            + "\n\n" + "**消耗**\n" + "\n".join(x for x in drop_list if 2000000 <= int(item_list[x]) < 3000000)
+            + "\n\n" + "**其他**\n" + "\n".join(x for x in drop_list if int(item_list[x]) < 1000000 or int(item_list[x]) >= 3000000)
+        )
+
+        ID = mob_info[8].split('.')[0]
         embed.set_thumbnail(url=f"https://maplestory.io/api/TWMS/256/mob/{ID}/render/stand")
         await context.send(embed=embed)
     
-    @maple.command(name="chance_to_hit", description="物攻職業命中率計算")
-    @app_commands.autocomplete(name=autocompletion_list(var.mob_list))
-    @app_commands.describe(
-        name="怪物名稱",
-        level="角色等級",
-        accuracy="命中率"
-    )
-    # Chance to Hit = Accuracy/((1.84 + 0.07 * D) * Avoid) - 1
-    # (D = monster level - your level. If negative, make it 0.)
-    async def mob(self, context: Context, name: str, level: int, accuracy: int) -> None:
-        mob_info = var.mob[var.mob['name_tw'] == name]
-        embed = discord.Embed(
-            title=f"**{name}**", description=f"", color=0xBEBEFE
-        )
-        mob_level, evasion = mob_info["level"].values[0], mob_info["evasion"].values[0]
+    # @maple.command(name="chance_to_hit", description="物攻職業命中率計算")
+    # @app_commands.autocomplete(name=autocompletion_list(drop_data.keys()))
+    # @app_commands.describe(
+    #     name="怪物名稱",
+    #     level="角色等級",
+    #     accuracy="命中率"
+    # )
+    # # Chance to Hit = Accuracy/((1.84 + 0.07 * D) * Avoid) - 1
+    # # (D = monster level - your level. If negative, make it 0.)
+    # async def mob(self, context: Context, name: str, level: int, accuracy: int) -> None:
+    #     mob_info = var.mob[var.mob['name_tw'] == name]
+    #     embed = discord.Embed(
+    #         title=f"**{name}**", description=f"", color=0xBEBEFE
+    #     )
+    #     mob_level, evasion = mob_info["level"].values[0], mob_info["evasion"].values[0]
         
-        header = ['accuracy\\level'] + [l for l in range(level, level+3)]
-        acc_table = [[acc] + [min(100, float(round((acc/((1.84 + 0.07 * max(0, mob_level - l)) * evasion) - 1) * 100, 1))) for l in range(level, level+3)] for acc in range(accuracy, accuracy+10)]
+    #     header = ['accuracy\\level'] + [l for l in range(level, level+3)]
+    #     acc_table = [[acc] + [min(100, float(round((acc/((1.84 + 0.07 * max(0, mob_level - l)) * evasion) - 1) * 100, 1))) for l in range(level, level+3)] for acc in range(accuracy, accuracy+10)]
 
-        output = t2a(
-            header = header,
-            body = acc_table,
-            first_col_heading=True
-        )
+    #     output = t2a(
+    #         header = header,
+    #         body = acc_table,
+    #         first_col_heading=True
+    #     )
 
-        embed.add_field(name="命中率", value=f"```\n{output}\n```", inline=True)
+    #     embed.add_field(name="命中率", value=f"```\n{output}\n```", inline=True)
 
-        ID = int(mob_info['ID'].values[0])
-        embed.set_thumbnail(url=f"https://maplestory.io/api/TWMS/256/mob/{ID}/render/stand")
-        await context.send(embed=embed)
+    #     ID = int(mob_info['ID'].values[0])
+    #     embed.set_thumbnail(url=f"https://maplestory.io/api/TWMS/256/mob/{ID}/render/stand")
+    #     await context.send(embed=embed)
     
     @maple.command(name="opq_cd", description="當日CD顏色查詢")
     async def mob(self, context: Context) -> None:
