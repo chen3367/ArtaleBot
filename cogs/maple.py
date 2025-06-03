@@ -151,7 +151,7 @@ class Maple(commands.Cog, name="maple"):
         mob_info = mob[name]
         map_info = maple_map[name].keys()
         boss_respawn_time = boss_time.get(name, "")
-        drop_list = sorted(drop_data[name], key = lambda x: item_list[x])
+        drop_list = sorted(drop_data[name], key = lambda x: int(item_list.get(x, "9999999")))
         embed = discord.Embed(
             title=f"**{name}** { '(BOSS)' if boss_respawn_time else ''}", 
             description=f"資料來源: [Artale怪物掉落物一覽](https://a2983456456.github.io/artale-drop/)", 
@@ -161,7 +161,8 @@ class Maple(commands.Cog, name="maple"):
         embed.add_field(
             name="",
             value=(
-                "**怪物資訊**\n"
+                "```ini\n"
+                "[怪物資訊]\n"
                 f"等級: {mob_info[0]}\n"
                 f"HP: {mob_info[1]}\n"
                 f"MP: {mob_info[2]}\n"
@@ -169,16 +170,27 @@ class Maple(commands.Cog, name="maple"):
                 f"迴避: {mob_info[4]}\n"
                 f"物防: {mob_info[5]}\n"
                 f"魔防: {mob_info[6]}\n"
-                f"命中需求: {mob_info[7]}\n" + (f"重生時間: {boss_respawn_time}\n\n" if boss_respawn_time else "\n")
-            ) 
-            + "**出沒地圖**\n" + "\n".join(map_info)
+                f"命中需求: {mob_info[7]}\n"
+                "```"
+                "```ini\n"
+                "[出沒地圖]\n"
+            )  + "\n".join(map_info) + "```"
         )
 
         embed.add_field(
             name="",
-            value="**裝備**\n" + "\n".join(x for x in drop_list if 1000000 <= int(item_list[x]) < 2000000)
-            + "\n\n" + "**消耗**\n" + "\n".join(x for x in drop_list if 2000000 <= int(item_list[x]) < 3000000)
-            + "\n\n" + "**其他**\n" + "\n".join(x for x in drop_list if int(item_list[x]) < 1000000 or int(item_list[x]) >= 3000000)
+            value= "```xml\n"
+            + "<裝備>\n"
+            + "\n".join(x for x in drop_list if 1000000 <= int(item_list[x]) < 2000000)
+            + "```"
+            + "```xml\n"
+            + "<消耗>\n"
+            + "\n".join(x for x in drop_list if 2000000 <= int(item_list[x]) < 3000000)
+            + "```" 
+            + "```xml\n"
+            + "<其他>\n"
+            + "\n".join(x for x in drop_list if int(item_list[x]) < 1000000 or int(item_list[x]) >= 3000000)
+            + "```" 
         )
 
         ID = mob_info[8].split('.')[0]
